@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+
+contract Linguin is ERC721, ERC721Enumerable, Pausable, Ownable {
+    using Counters for Counters.Counter;
+    uint256 public  maxSupply = 3 ;
+
+    bool public publicMint = false;
+    bool public allowlistMint = false;
+    
+    mapping(address => bool ) public Allowlist;
+
+    Counters.Counter private _tokenIdCounter;
+
+    constructor() ERC721("Linguin", "LGN") {}
+
+    function _baseURI() internal pure override returns (string memory) {
+        return "ipfs:///";
+    }
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+
+    function editMintWindow(
+        bool _publicMint,
+        bool _allowlistMint
+    ) external  onlyOwner {
+        publicMint = _publicMint;
+        allowlistMint = _allowlistMint;
+    }
+
+    function PublicMint() public payable {
+        require(publicMint, "Public mint not started yet");
+        require(msg.value == 0.0000001 ether, "Not Enough Funds");
+        require(totalSupply() < maxSupply, "mint ended");
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(msg.sender, tokenId);
+    }
+    
+    //set the allowlist address by the owner 
+     function SetAllowList(address[] memory addresses) external onlyOwner {
+         for( uint256 i = 0 ;i < addresses.length ; i++){
+           Allowlist[addresses[i]] = true ;
+         }
+     }
+     
+     function AllowlistMint() public payable {
+        require(allowlistMint,"Allowlist Mint not started yet");
+        require(Allowlist[msg.sender], "only the Allowlist Can mint Now");
+        require(msg.value == 0.00000001 ether, "Not Enough Funds");
+        require(totalSupply() < maxSupply, "mint ended");
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(msg.sender, tokenId);
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
+        internal
+        whenNotPaused
+        override(ERC721, ERC721Enumerable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC721Enumerable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+}
